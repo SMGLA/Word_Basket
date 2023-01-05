@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Word Basket</title>
+  <link rel="shortcut icon" type="image/x-icon" href="image/favicon.ico" />
+  <link rel="stylesheet" href="css/style-new.css">
+  <script src="https://kit.fontawesome.com/5107fa3c42.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+
+  (() => {
+
+    const words = [];
+
+    function WordItem(props) {
+      return (
+        <div className={`card ${props.word.isTicked ? 'ticked' : ''}`}>
+          <span className="card-bullet"></span>
+          <p onClick={() => props.tickCard(props.word)}>{props.word.label}
+          </p>
+          <i className="fa-solid fa-trash card-delete" onClick={() =>
+            props.deleteWord(props.word)}></i>
+        </div>
+      );
+    }
+
+    function WordBasket(props) {
+      const words = props.words.map(word => {
+        return (
+              <WordItem
+                key={word.id}
+                word={word}
+                tickCard={props.tickCard}
+                deleteWord={props.deleteWord}
+              />
+        );
+      });
+      return (
+        <div className="cards">
+          {props.words.length ? words : <p className="cards-no-card">Please add a word 😌</p>}
+          </div>
+      );
+    }
+
+    function InputForm(props) {
+      return (
+        <form onSubmit={props.addItem}>
+          <input type="text" id="textbox" placeholder="Enter a word:" value={props.item} onChange={props.updateItem}/>
+          <button type="submit" value="Add">Add</button>
+        </form>
+      );
+    }
+
+    function ClearAll(props) {
+      return (
+        <div className="clear-button"  onClick={props.clearAll}>
+                <i className="fa-solid fa-trash trash"></i>
+                Clear all ticked items
+        </div>
+      );
+    }
+    
+    function modalWindow() {
+      // Get elements with id
+      const open = document.getElementById('open');
+      const close = document.getElementById('close');
+      const modal = document.getElementById('modal');
+      const mask = document.getElementById('mask');
+
+      // When "?" button with id="open" is clicked, remove class="hidden" and show the hidden elements
+      open.addEventListener('click', () => {
+        console.log('open button clicked!');
+        modal.classList.remove('hidden');
+        mask.classList.remove('hidden');
+      });
+
+      // When "Close" button with id="close" is clicked, add class="hidden" back and hide the appeared elements
+      close.addEventListener('click', () => {
+        console.log('close button clicked!');
+        modal.classList.add('hidden');
+        mask.classList.add('hidden');
+      });
+
+      // When outside of the modal window area is clicked, add class="hidden" back and hide the appeared elements
+      mask.addEventListener('click', () => {
+        close.click(); // Reuse the 'close' function
+      });      
+    }
+
+    function getUniqueId() {
+      return new Date().getTime().toString(36) + '-' + Math.random().toString(36);
+    }
+
+    class App extends React.Component {
+
+      // Set State
+      constructor() {
+        super();
+        this.state = {
+          words: words,
+          item: ''
+        };
+
+        this.tickCard = this.tickCard.bind(this);
+        this.addItem = this.addItem.bind(this);
+        this.updateItem = this.updateItem.bind(this);
+        this.deleteWord = this.deleteWord.bind(this);
+        this.clearAll = this.clearAll.bind(this);
+      }
+
+      tickCard(word) {
+        // Create a copy of the words array
+        const words = this.state.words.map(word => {
+          return {id: word.id, label: word.label, isTicked: word.isTicked}
+        });
+
+        // Get id of the ticked word
+        const pos = this.state.words.map(word => {
+          return word.id;
+          // To tick if the id matches the passed word
+        }).indexOf(word.id);
+
+        // Add a tick mark to the card (invert the state)
+        words[pos].isTicked = !words[pos].isTicked;
+
+        // Set the new State
+        this.setState({
+          words: words
+        });
+      }
+
+      addItem(e) {
+        e.preventDefault();
+
+        // Do nothing when empty item is submitted
+        if (this.state.item.trim() === '') {
+          return;
+        }
+
+        const item = {
+          id: getUniqueId(),
+          label: this.state.item,
+          isTicked: false
+        };
+
+        const words = this.state.words.slice();
+        words.push(item);
+        this.setState({
+          words: words,
+          item: ''
+        });
+      }
+
+      updateItem(e) {
+        this.setState({
+          item: e.target.value
+        });
+      }
+
+      deleteWord(word) {
+        if (!confirm('Do you want to delete this word?')) {
+          return;
+        }
+        const words = this.state.words.slice();
+        const pos = this.state.words.indexOf(word);
+        words.splice(pos, 1);
+        this.setState({
+          words: words
+        });
+      }
+
+      clearAll() {
+        if (!confirm('Are you sure you want to delete all the ticked items?')) {
+          return;
+        }
+
+        const words = this.state.words.filter(word => {
+          return !word.isTicked;
+        });
+        this.setState({
+          words: words
+        });
+      }
+
+      // Save the data on local
+      componentDidUpdate() {
+        localStorage.setItem('words', JSON.stringify(this.state.words));
+      }
+
+      // Load the saved data or empty if failed
+      componentDidMount() {
+        this.setState({
+            words: JSON.parse(localStorage.getItem('words')) || []
+          });
+      }
+
+      render() {
+        return (
+        <div className="container">
+          <header>
+            <div>
+              <h1><i className="fa-solid fa-basket-shopping"></i>Word Basket</h1>
+              <InputForm 
+                item={this.state.item}
+                updateItem={this.updateItem}
+                addItem={this.addItem}
+              />
+            </div>
+          </header>
+          <main>
+            <div className="menu">
+              <ClearAll
+                words={this.state.words}
+                clearAll={this.clearAll}
+              />
+              <i className="fa-regular fa-circle-question help" id="open" onClick={modalWindow}></i>
+              <div id="mask" className="hidden"></div>
+                <section id="modal" className="hidden">
+                  <h2>How to use</h2>
+                  <ul>
+                    <li>Enter a word you'd like to keep in the text box, then hit the "Add" button to add a card.</li>
+                    <li>You can cross out the word once you remember it. The word will be crossed out and a blue tick mark will apper next to it.</li>
+                    <li>Each item can be deleted by clicking the bin <i className="fa-solid fa-trash trash"></i> icon.</li>
+                    <li>With the "<i className="fa-solid fa-trash trash"></i> Clear all ticked items" button, all the ticked items can be deleted at once. It cannot be undone.</li>
+                  </ul>
+                  <div className="close-button"  id="close">
+                    <i className="fa-regular fa-circle-xmark"></i>
+                    <span>Close</span>
+                  </div>
+                </section>
+            </div>
+            <WordBasket
+              // State of word list
+              words={this.state.words}
+              tickCard={this.tickCard}
+              deleteWord={this.deleteWord}
+            />
+          </main>
+          <footer>
+            <div className="footer-border"></div>
+            <small>Copyright © 2022 Shuko Matsuura</small>
+          </footer>
+          </div>
+        );
+      }
+    }
+
+    const container = document.getElementById('root');
+    const root = ReactDOM.createRoot(container);
+    
+    root.render(<App />);
+  })();
+  </script>
+</body>
+</html>
